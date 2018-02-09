@@ -1,416 +1,446 @@
-/*
-    Features to Implement:
-    - ground and sky (with clouds) background to make it pretty
-    - bow sprite animation for when you have different power levels
-    - arrow angling changes at different points in flight
-    - arrows getting stuck in the moving target/ground
-*/
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// - { { {    GRAPHICS    } } } - 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-// graphics
 
-// arrow
-const ARROW_DIMENSIONS = 128;
-const ARROW_RESIZE_FACTOR = 1;
-var arrow = new Image(ARROW_DIMENSIONS/ARROW_RESIZE_FACTOR,
-                                ARROW_DIMENSIONS/ARROW_RESIZE_FACTOR);
-arrow.src = "img/horizontal_arrow.png"; 
+const SCALING_FACTOR = 1;
+const HORIZONTAL = 0;
+const VERTICAL = 1;
+const WIDTH = window.innerWidth;
+const HEIGHT = window.innerHeight;
 
-// target crosshairs
-const TARGET_DIMENSIONS = 42;
-const TARGET_RESIZE_FACTOR = 1;
-var target = new Image(TARGET_DIMENSIONS/TARGET_RESIZE_FACTOR,
-                                TARGET_DIMENSIONS/TARGET_RESIZE_FACTOR);
-target.src = "img/crosshair_red_small.png"; 
 
-// board
-const BOARD_DIMENSIONS = 142;
-const BOARD_RESIZE_FACTOR = 1;
-var board = new Image(BOARD_DIMENSIONS/BOARD_RESIZE_FACTOR,
-                                BOARD_DIMENSIONS/BOARD_RESIZE_FACTOR);
-board.src = "img/target_colored_outline.png";   
+/**
+ * Sprite Sheet.
+ * @param {int} n - Number of sprites in x direction.
+ * @param {int} m - Number of sprites in y direction.
+ */
+function SpriteSheet(src, x, y, n, m) {
+    this.img = new Img(src, 420, 360);
+    this.sx = n;
+    this.sy = m
+    this.width = this.img.width / n;
+    this.height = this.img.height / m;
 
-// sky
-const SKY_DIMENSIONS = 512;
-const SKY_RESIZE_FACTOR = 1.5;
-var sky_background = new Image(SKY_DIMENSIONS/SKY_RESIZE_FACTOR,
-                                SKY_DIMENSIONS/SKY_RESIZE_FACTOR);
-sky_background.src = "img/skybox_sideHills.png";
+    this.drawSprite = function(sprite, x, y, rot) {
+        rot = (typeof rot == "undefined") ? 0 : rot;
 
-// sky top
-var sky_top = new Image(SKY_DIMENSIONS/SKY_RESIZE_FACTOR,
-                                SKY_DIMENSIONS/SKY_RESIZE_FACTOR);
-sky_top.src = "img/skybox_top.png";
-
-// grass
-const GRASS_DIMENSIONS = 128;
-const GRASS_RESIZE_FACTOR = 2; // 1.8 or 2
-var grass = new Image(GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR,
-                        GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR);
-grass.src = "img/stone_grass.png";
-
-// grass blades
-var grass_blades = [new Image(GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR,
-                        GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR),
-                    new Image(GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR,
-                        GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR),
-                    new Image(GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR,
-                        GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR),
-                    new Image(GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR,
-                        GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR)];
-for (var i = 1; i <= grass_blades.length; i++){
-    grass_blades[i-1].src = "img/grass" + i + ".png";
+        if (rot == 0) {
+            canvasContext.drawImage(this.img.img,
+                sprite % this.sx * this.width, 
+                Math.floor(sprite / 5) * this.height,
+                this.width, this.height,
+                x, y,
+                this.width, this.height);
+        }
+        else {
+            canvasContext.save(); 
+            canvasContext.translate(
+                x + this.width / 2, 
+                y + this.height / 2);
+            canvasContext.rotate(rot);
+            canvasContext.drawImage(this.img.img,
+                sprite % this.sx * this.width, 
+                Math.floor(sprite / 5) * this.height,
+                this.width, this.height,
+                -this.width / 2, -this.height / 2,
+                this.width, this.height);
+            canvasContext.restore();
+        }
+    }
 }
 
-// gold
-var gold = new Image(GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR,
-                        GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR);
-gold.src = "img/stone_gold.png";
-    
-// stone
-var stone = new Image(GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR,
-                        GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR);
-stone.src = "img/stone.png";
 
-// bow
-const TOTAL_BOW_WIDTH = 420;
-const TOTAL_BOW_HEIGHT = 360;
-const BOW_WIDTH = TOTAL_BOW_WIDTH/6;
-const BOW_HEIGHT = TOTAL_BOW_HEIGHT/4;
-const BOW_RESIZE_FACTOR = 2.2;
-var bow = new Image(TOTAL_BOW_WIDTH, TOTAL_BOW_HEIGHT);
-bow.src = "img/bow.png";
+/** Image element of given dimensions. */
+function Img(src, x, y) {
+    // by default, set image height to width
+    y = (typeof y == "undefined") ? x : y;
+
+    this.img = new Image(x * SCALING_FACTOR, y * SCALING_FACTOR);
+    this.img.src = src;
+    this.width = this.img.width;
+    this.height = this.img.height;
+
+    this.draw = function(x, y, rot) {
+        rot = (typeof rot == "undefined") ? 0 : rot;
+
+        if (rot == 0) {
+            canvasContext.drawImage(this.img,
+                x, y,
+                this.img.width,
+                this.img.height);
+        }
+        else {
+            canvasContext.save(); 
+            canvasContext.translate(
+                x + this.width / 2, 
+                y + this.height / 2);
+            canvasContext.rotate(rot);
+            canvasContext.drawImage(this.img,
+                -this.width / 2, 
+                -this.height / 2,
+                this.img.width,
+                this.img.height);
+            canvasContext.restore();
+        }
+    }
+
+    this.tesselate = function(direction, offset) {
+        // compute number of times image is drawn
+        if (direction == HORIZONTAL) {
+            tesselations = Math.ceil(canvas.width / this.img.width);
+        }
+        else {
+            tesselations = Math.ceil(canvas.height / this.img.height);
+        }
+
+        // draw tesselation
+        for (var i = 0; i < tesselations; i++) {
+            x = (direction == HORIZONTAL) ? i * this.img.width : offset;
+            y = (direction != HORIZONTAL) ? i * this.img.height : offset;
+            this.draw(x, y);
+        }
+    }
+}
+
+
+// canvas
+var canvas;
+var canvasContext;
+
+// icons
+var imgBow = new SpriteSheet("img/bow.png", 420, 360, 6, 4, 1.5);
+var imgArrow = new Img("img/horizontal_arrow.png", 128, 40);
+var imgTarget = new Img("img/crosshair_red_small.png", 42);
+var imgBoard = new Img("img/target_colored_outline.png", 142);
+
+// background
+var skyTop = new Img("img/skybox_top.png", HEIGHT / 2);
+var skyBackground = new Img("img/skybox_sideHills.png", HEIGHT / 2);
+
+// ground
+const GRASS_SIZE = 64;
+var grass = new Img("img/stone_grass.png", GRASS_SIZE);
+var stone = new Img("img/stone.png", GRASS_SIZE);
+var gold = new Img("img/stone_gold.png", GRASS_SIZE);
+var grassBlades = [];
+for (var i = 1; i <= 4; i++) {
+    grassBlade = new Img("img/grass" + i + ".png", GRASS_SIZE);
+    grassBlades.push(grassBlade);
+}
+var grassBladePositions = {};
+for (var i = 0; i < 10; i++) {
+    pos = Math.floor(Math.random() * WIDTH / GRASS_SIZE)
+    grassBlade = grassBlades[Math.floor(Math.random() * grassBlades.length)];
+    grassBladePositions[pos] = grassBlade;
+}
+
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// - { { {    GAME PLAY    } } } - 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+
+// game states
+const PLACING_BOW = 0;
+const PLACING_TARGET = 1;
+const WATCHING_ARROW = 2;
+var gameState = PLACING_BOW;
 
 // game settings
 const FPS = 60;
 const GRAVITY = 1;
+const MAX_ARROWS = 3;
 
-var canvas;
-var canvasContext;
-
-var showBall = false;
-var showTarget = false;
-var showPath = false;
-var showBow = true;
-
-var actionCycle = [true, false, false]; // [placingBow, placingTarget, watchingBall]
 var groundHeight;
 
-var ballVelocity = [0, 0];
-var ballLocation = [50,50];
-var ballHeight = 5;
-var ballWidth = 40;
+var arrowWidth = 40;
+var arrowHeight = 5;
+var arrows = [];
+
+var boardHeight = imgBoard.height;
+var boardWidth = 10;
+var boardBuffer = 200;
+var board = new Projectile(boardWidth, boardHeight, false, true, false);
+board.vx = 0;
+board.vy = 1;
+board.x = WIDTH - boardWidth - boardBuffer;
 
 var bowLocation = [0, 0];
-
-var boardLocation = [];
-var boardSpeed = [0, 1];
-var boardHeight = board.height; // testing : 100
-var boardWidth = 10; // testing : 10
-var boardBuffer = 5;
-<!-- const BOARD_HEIGHT; -->
-<!-- const BOARD_WIDTH; -->
-<!-- var board = new Image(GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR, -->
-                        <!-- GRASS_DIMENSIONS/GRASS_RESIZE_FACTOR); -->
-<!-- grass.src = "img/stone_grass.png"; -->
-
 var targetLocation = [0,0];
-var maxPower;
-var power = [];
-
-<!-- var firstRender = true; -->
-<!-- var x = 0; // index for emptpy rng grass array -->
 
 
-function calculateMousePos(evt){
+window.onload = function() {
+    canvas = document.getElementById('gameCanvas');
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    canvasContext = canvas.getContext('2d');
+    
+    render();
+    
+    // updates
+    setInterval(function() {
+        update();
+        render();
+    }, 100 / FPS);
+    
+    // listeners
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('click', handleMouseClick);
+    
+}
+
+
+/** Handles any mouse movement. Updates bow and target accordingly. */
+function handleMouseMove(evt) {
+    var mousePos = getMousePos(evt);
+    if (gameState == PLACING_BOW) {
+        bowLocation[0] = mousePos.x;
+        bowLocation[1] = mousePos.y;
+    }
+    // placing target with mouse before or after shot
+    else {
+        targetLocation[0] = mousePos.x;
+        targetLocation[1] = mousePos.y;
+    }
+}
+
+
+/** Handles any mouse clicks. Updates game state accordingly. */
+function handleMouseClick(evt) {
+    var mousePos = getMousePos(evt);
+    if (gameState == PLACING_BOW) {
+        targetLocation[0] = mousePos.x;
+        targetLocation[1] = mousePos.y;
+        gameState = PLACING_TARGET;
+    }
+    else if (gameState == PLACING_TARGET) {
+        fire();
+        gameState = WATCHING_ARROW;
+    }
+    else if (gameState == WATCHING_ARROW) {
+        gameState = PLACING_BOW;
+    }
+}
+
+
+/** Launches arrow. */
+function fire(){
+    console.log("Fire!");
+
+    arrow = new Projectile(arrowWidth, arrowHeight, true, false, true);
+    arrow.x = bowLocation[0];
+    arrow.y = bowLocation[1];
+    arrow.vx = (targetLocation[0] - bowLocation[0]) / (FPS * 1.5);
+    arrow.vy = (targetLocation[1] - bowLocation[1]) / (FPS);
+    arrows.push(arrow);
+
+    if (arrows.length > MAX_ARROWS) arrows.shift();
+}
+
+
+/** Handles all trajectory updating. */
+function update() {
+    // board movement.
+    board.update();
+
+    // arrow movement.
+    updateArrow();
+}
+
+
+/** Updates arrow movement. */
+function updateArrow() {
+    for (var i = 0; i < arrows.length; i++) {
+        arrow = arrows[i];
+        if (arrow.doesCollide(board)) {
+            arrow.stuck = true;
+            arrow.host = board;
+        }
+        arrow.update()
+    }
+}
+
+
+/**
+ * Projectile.
+ * @param {bool} gravity - Whether object is affected by gravity or not.
+ * @param {bool} bounce - Whether object will bounce upon striking a surface.
+ * @param {bool} rotate - Whether object will rotate depending on trajectory.
+ */
+function Projectile(width, height, gravity, bounce, rotate) {
+    this.width = width;
+    this.height = height;
+    this.gravity = gravity;
+    this.bounce = bounce;
+    this.rotate = rotate;
+    this.x = 0;
+    this.y = 0;
+    this.vx = 0;
+    this.vy = 0;
+    this.rotation = 0;
+    this.stuck = false;
+    this.host = null;
+    this.dead = false;
+
+    this.update = function() {
+        if (this.stuck) {
+            // if object is stuck in another object, move both objects
+            if (this.host) {
+                this.x += this.host.vx;
+                this.y += this.host.vy;
+            }
+            return;
+        }
+
+        if (this.rotate) {
+            // update rotation based on trajectory
+            this.rotation = Math.atan(this.vy / this.vx);    
+        }
+
+        // update trajectory
+        if (this.gravity) {
+            this.vy += GRAVITY / FPS;
+        }
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.y <= 0 && this.bounce) {
+            this.vy = -this.vy;
+        }
+
+        // check for ground collision
+        if (this.y + this.height >= groundHeight) {
+            if (this.bounce) {
+                this.vy = -this.vy;
+            }
+            else {
+                this.vx = 0;
+                this.vy = 0;
+                this.stuck = true;
+            }
+        }
+    }
+
+    this.doesCollide = function(target) {
+        return (
+            this.x + this.width >= target.x && 
+            this.x + this.width <= target.x + target.width &&
+            this.y + this.height >= target.y &&
+            this.y + this.height <= target.y + target.height
+        )
+    }
+}  // Projectile
+
+
+function getMousePos(evt){
     // accounts for scrolling and moving the mouse outside the canvas
     var rect = canvas.getBoundingClientRect();
     var root = document.documentElement;
     var mouseX = evt.clientX - rect.left - root.scrollLeft;
     var mouseY = evt.clientY - rect.top - root.scrollTop;
-    // seems like returning a dictionary in python
+
+    // return JSON - like returning a dictionary in python
     return { 
         x:mouseX,
         y:mouseY
     };
 }
 
-function fire(x, y){
-    console.log("Fire!");
-    for (var i = 0; i < ballVelocity.length; i++){
-        power[i] = (targetLocation[i] - ballLocation[i])/(FPS);
-        if (i == 1){ // very strong nerf to x speed
-            power[i]/=1.5
-        }
-        ballVelocity[i] = power[i];
-    }
-}
 
-window.onload = function() {
-    canvas = document.getElementById('gameCanvas');
-    canvasContext = canvas.getContext('2d');
 
-    maxPower = Math.sqrt(canvas.width*canvas.width + canvas.height*canvas.height)/FPS;
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// - { { {    RENDERING    } } } - 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    boardLocation = [canvas.width - boardBuffer - boardWidth - board.width, boardBuffer]
-    
-    drawEverything();
-    
-    setInterval(function() {
-        moveEverything();
-        drawEverything();
-    }, 100/FPS);
-    
-    canvas.addEventListener('mousemove',
-        function(evt) {
-            var mousePos = calculateMousePos(evt);
-            if (actionCycle[0]){ // placing the ball with the mouse
-                ballLocation[0] = mousePos.x;
-                ballLocation[1] = mousePos.y;
-                bowLocation[0] = ballLocation[0];
-                bowLocation[1] = ballLocation[1];
-            }
-            else if (actionCycle[1] || actionCycle[2]){ // placing the target with the mouse before and after the shot, but not while placing the bow
-                targetLocation[0] = mousePos.x;
-                targetLocation[1] = mousePos.y;
-            }
-            // console.log("Mouse Motion!");
-        });
-    
-    canvas.addEventListener('click',
-        function(evt) {
-            var mousePos = calculateMousePos(evt);
-            if (actionCycle[0]){ // place the ball
-                targetLocation[0] = mousePos.x;
-                targetLocation[1] = mousePos.y;
-                showTarget = true;
-                showPath = true;
-            }                   
-            else if (actionCycle[1]){ // fire the ball
-                showPath = false;
-                showBall = true;
-                fire(mousePos.x, mousePos.y);
-            }
-            else if (actionCycle[2]){ // reset properties of the ball after watching it fly
-                ballVelocity[0] = 0;
-                ballVelocity[1] = 0;
-                showBall = false;
-                showTarget = false;
-            }
-            for (var i = 0; i < actionCycle.length; i++){ // cycles between each actions on each click
-                if (actionCycle[i]){
-                    console.log("Cycle : ", i);
-                    actionCycle[i] = false;
-                    actionCycle[(i+1) % actionCycle.length] = true;
-                    break;
-                }
-            }
-            console.log("Mouse Click!");
-        });
-} // window.onload
 
-function moveEverything() {         
-    if (boardLocation[1] + boardHeight >= groundHeight - boardBuffer){
-        boardLocation[1] = groundHeight - boardBuffer - boardHeight;
-        boardSpeed[1] = -boardSpeed[1];         
-    }
-    else if (boardLocation[1] <= boardBuffer){
-        boardLocation[1] = boardBuffer;
-        boardSpeed[1] = -boardSpeed[1];
-    }
-    boardLocation[1] += boardSpeed[1];
-    
-    if (ballLocation[1] >= groundHeight) { // ground collision, not falling
-        console.log("Ground Collision!");
-        ballVelocity[0] = 0;
-        ballVelocity[1] = 0;
-    }
-    else if (ballLocation[0] + ballWidth >= boardLocation[0] && 
-                ballLocation[0] + ballWidth <= boardLocation[0] + boardWidth &&
-                ballLocation[1] + ballHeight >= boardLocation[1] &&
-                ballLocation[1] + ballHeight <= boardLocation[1] + boardHeight) { // target collision, sticking to target
-        console.log("Target Collision!");
-        ballVelocity[0] = 0;
-        ballVelocity[1] = 0;
-        ballLocation[0] += boardSpeed[0];
-        ballLocation[1] += boardSpeed[1];
-    }
-    else{ // above ground, still falling
-        if (actionCycle[2]){
-            ballVelocity[1] += GRAVITY/FPS;
-            for (var i = 0; i < ballVelocity.length; i++){
-                ballLocation[i] += ballVelocity[i];
-                //console.log(ballLocation[i]);
-            }   
-        }
-    }   
-    
-}
-
-function drawEverything() {
+/** Handles all game rendering. */
+function render() {
     // background
-    // only meant for me to see where the canvas starts and ends
-    canvasContext.fillStyle = 'black';
-    canvasContext.fillRect(0, 0, canvas.width, canvas.height);
-    
-    var lowestHeight = -1;
-    
-    // sky top background
-    for (var i = 0; i < Math.ceil(canvas.width/sky_top.width); i++){
-        canvasContext.drawImage(sky_top, 
-                                i*sky_top.width, lowestHeight, 
-                                sky_top.width, sky_top.height)
-    }
-    
-    // sky trees background
-    lowestHeight += -1 + sky_top.height/1.1
-    for (var i = 0; i < Math.ceil(canvas.width/sky_background.width); i++){
-        canvasContext.drawImage(sky_background, 
-                                i*sky_background.width, lowestHeight, 
-                                sky_background.width, sky_background.height)
-    }
-    
-    // grass blades background 
-    lowestHeight += -1 + sky_background.height - grass.height/1.5
-    <!-- canvasContext.drawImage(grass_blades[0],  -->
-                <!-- 16*grass.width, lowestHeight - grass_blades[0].height,  -->
-                <!-- grass.width, grass.height) -->
-    <!-- canvasContext.drawImage(grass_blades[1],  -->
-                <!-- 5*grass.width, lowestHeight - grass_blades[1].height,  -->
-                <!-- grass.width, grass.height) -->
-    <!-- canvasContext.drawImage(grass_blades[2],  -->
-                <!-- 8*grass.width, lowestHeight - grass_blades[2].height,  -->
-                <!-- grass.width, grass.height) -->
-    <!-- canvasContext.drawImage(grass_blades[3],  -->
-                <!-- 13*grass.width, lowestHeight - grass_blades[3].height,  -->
-                <!-- grass.width, grass.height) -->
-    
-    <!-- // broken code for randomizing grass locations -->
-    <!-- var empty = []; // boolean array to show which tiles are occupied by grass -->
-    <!-- for (var i = 0; i < Math.ceil(canvas.width/grass.width); i++){ -->
-        <!-- empty[i] = true; -->
-    <!-- } -->
-    <!-- //console.log("empty length : ", empty.length); -->
-    <!-- for (var i = 0; i < grass_blades.length; i++){ -->
-        <!-- if (firstRender){ -->
-            <!-- if (i == grass_blades.length -1){ -->
-                <!-- firstRender = false; -->
-            <!-- }                   -->
-            <!-- do{ -->
-                <!-- x = Math.floor(Math.random()*empty.length); -->
-            <!-- } while (!empty[x]); -->
-                <!-- empty[x] = false; -->
-        <!-- } -->
-        <!-- canvasContext.drawImage(grass_blades[i],  -->
-                                <!-- x*grass.width, lowestHeight - grass_blades[i].height,  -->
-                                <!-- grass.width, grass.height) -->
-    <!-- } -->
-    //console.log("number of grass tiles : ", Math.ceil(canvas.width/grass.width));         
-    
-    
-    // grass background
-    groundHeight = lowestHeight;
-    for (var i = 0; i < Math.ceil(canvas.width/grass.width); i++){
-        canvasContext.drawImage(grass, 
-                                i*grass.width, lowestHeight, 
-                                grass.width, grass.height)
-    }
-    <!-- console.log("number of grass tiles : ", Math.ceil(canvas.width/grass.width)); -->
-    
-    // stone background
-    lowestHeight += -1 + grass.height
-    for (var i = 0; i < Math.ceil(canvas.width/stone.width); i++){
-        canvasContext.drawImage(stone, 
-                                i*stone.width, lowestHeight, 
-                                stone.width, stone.height)
-    }
-    
-    <!-- // gold background -->
-    <!-- lowestHeight += -1 + grass.height -->
-    <!-- for (var i = 0; i < Math.ceil(canvas.width/gold.width); i++){ -->
-        <!-- lowestHeight -->
-        <!-- canvasContext.drawImage(gold,  -->
-                                <!-- i*gold.width, lowestHeight,  -->
-                                <!-- gold.width, gold.height) -->
-    <!-- } -->
-    
-    <!-- // gold background -->
-    <!-- lowestHeight += -1 + grass.height -->
-    <!-- for (var i = 0; i < Math.ceil(canvas.width/gold.width); i++){ -->
-        <!-- lowestHeight -->
-        <!-- canvasContext.drawImage(gold,  -->
-                                <!-- i*gold.width, lowestHeight,  -->
-                                <!-- gold.width, gold.height) -->
-    <!-- } -->
-    
+    drawBackground();
+
     // board
-    canvasContext.fillStyle = 'white';
-    canvasContext.fillRect(boardLocation[0], boardLocation[1], boardWidth, boardHeight);
-    canvasContext.drawImage(board, 
-                            boardLocation[0] - board.width/2, 
-                            boardLocation[1]);
+    imgBoard.draw(board.x, board.y);
+
+    // bow
+    drawBow();
     
-    if (showBow){                   
-        powerFraction = Math.sqrt(power[0]*power[0] + power[1]*power[1])/maxPower;
-        
-        var level = powerFraction % 10 + 1; // ranges from 1 to 10 and decides which bow sprite is used                 
-        //var stretchFactor = 1.6
-        var column;
-        if (actionCycle[2]){ // arrow already fired
-            column = 0;
-        }
-        else {
-            column = 1;
-        }
-        var dx = targetLocation[0] - bowLocation[0];
-        var dy = targetLocation[1] - bowLocation[1];
-        var dr = Math.sqrt(dx*dx + dy*dy);
-        var rad = Math.asin(dx/dr);
-        <!-- if (actionCycle[1]){ -->
-            <!-- canvasContext.save(); -->
-            <!-- canvasContext.translate(canvas.width/2, canvas.height/2); -->
-            <!-- canvasContext.rotate(Math.PI/2-rad); -->
-        <!-- } -->
-        canvasContext.drawImage(bow,
-                                column*BOW_WIDTH, 0,
-                                BOW_WIDTH, BOW_HEIGHT,
-                                bowLocation[0] - BOW_WIDTH/2*BOW_RESIZE_FACTOR, 
-                                bowLocation[1] - BOW_HEIGHT/2*BOW_RESIZE_FACTOR,
-                                BOW_WIDTH*BOW_RESIZE_FACTOR, 
-                                BOW_HEIGHT*BOW_RESIZE_FACTOR);
-        <!-- if (actionCycle[1]){ -->
-            <!-- canvasContext.restore(); -->
-        <!-- } -->
-    }
-    
-    // ball / arrow
-    if (showBall){
-        <!-- canvasContext.fillStyle = 'red'; -->
-        <!-- canvasContext.fillRect(ballLocation[0], ballLocation[1], 40, 5); -->
-        canvasContext.drawImage(arrow, 
-                                ballLocation[0] - arrow.height/2,
-                                ballLocation[1] - arrow.width/2,
-                                arrow.width, 
-                                arrow.height);
-    }
+    // arrow
+    drawArrows();
     
     // target
-    if (showTarget){
-        <!-- canvasContext.fillStyle = 'green'; // basic bug testing target -->
-        <!-- canvasContext.fillRect(targetLocation[0], targetLocation[1], 10, 10); -->
-        canvasContext.drawImage(target, 
-                                targetLocation[0], targetLocation[1],
-                                target.width, target.height); // second coorindate enables scaling
+    if (gameState == PLACING_TARGET){
+        imgTarget.draw(targetLocation[0], targetLocation[1]);
+        drawPath();
     }
-    
-    // projectile trajectory
-    <!-- if (showPath){ -->
-        <!-- canvasContext.beginPath(); -->
-        <!-- canvasContext.beginPath(); -->
-        <!-- canvasContext.moveTo(ballLocation[0], ballLocation[1]); -->
-        <!-- canvasContext.lineTo(targetLocation[0] + TARGET_DIMENSIONS/2,  -->
-                                <!-- targetLocation[1] + TARGET_DIMENSIONS/2); // should not be 100 -->
-        <!-- canvasContext.lineWidth = 2; -->
-        <!-- canvasContext.strokeStyle = 'orange'; -->
-        <!-- canvasContext.stroke();             -->
-    <!-- } -->
-} // drawEverything
+}
+
+
+/** Draws path from bow to target. */
+function drawPath() {
+    canvasContext.setLineDash([5, 3])
+    canvasContext.lineWidth = 2;
+    canvasContext.strokeStyle = 'orange'; 
+    canvasContext.beginPath(); 
+    canvasContext.moveTo(
+        bowLocation[0] + imgBow.width / 2, 
+        bowLocation[1] + imgBow.height / 2); 
+    canvasContext.lineTo(
+       targetLocation[0] + imgTarget.width / 2,  
+       targetLocation[1] + imgTarget.height / 2);
+    canvasContext.stroke();
+}
+
+
+/** Renders all arrows. */
+function drawArrows() {
+    for (var i = 0; i < arrows.length; i++) {
+        arrow = arrows[i];
+        imgArrow.draw(
+            arrow.x, 
+            arrow.y - imgArrow.height / 2, 
+            arrow.rotation);
+    }
+}
+
+
+/** Renders bow, rotating and choosing the correct sprite to match its power. */
+function drawBow() {
+    // choose sprite depending on drawback of bow
+    var dx = targetLocation[0] - bowLocation[0];
+    var dy = targetLocation[1] - bowLocation[1];
+    var powerLevel = Math.floor(Math.sqrt(dx*dx + dy*dy) / 300.0 * 9);
+    var level = (gameState == WATCHING_ARROW) ? 10 : Math.min(powerLevel, 9);
+    var rad = 0;
+
+    if (gameState == PLACING_TARGET) {
+        // rotate bow to point to target
+        rad = Math.atan(dy / dx);
+        if (dx < 0) rad += Math.PI;
+    }
+
+    imgBow.drawSprite(level, bowLocation[0], bowLocation[1], rad);
+}
+
+
+/** Draws background, including sky, trees, and grass. */
+function drawBackground() {    
+    // sky
+    skyTop.tesselate(HORIZONTAL, 0);
+    skyBackground.tesselate(HORIZONTAL, skyTop.height);
+
+    // grass blades
+    groundHeight = HEIGHT - grass.height * 2;
+    for (var pos in grassBladePositions) {
+        grassBlade = grassBladePositions[pos];
+        grassBlade.draw(pos * grassBlade.width, 
+            groundHeight - grassBlade.height);
+    }
+
+    // ground
+    grass.tesselate(HORIZONTAL, groundHeight);
+    stone.tesselate(HORIZONTAL, groundHeight + grass.height);
+    // drawTesselation(stone, HORIZONTAL, lowestHeight);
+}
