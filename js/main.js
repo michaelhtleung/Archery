@@ -166,7 +166,7 @@ var board = new Projectile(boardWidth, boardHeight, false, true, false);
 board.vx = 0;
 board.vy = 1;
 board.x = WIDTH - boardWidth - boardBuffer;
-board.y = 500;
+board.y = 0;
 
 var bowLocation = [0, 0];
 var targetLocation = [0,0];
