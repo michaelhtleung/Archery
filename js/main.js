@@ -149,7 +149,7 @@ const WATCHING_ARROW = 2;
 var gameState = PLACING_BOW;
 
 // game settings
-const FPS = 60;
+const FPS = 60; 
 const GRAVITY = 1;
 const MAX_ARROWS = 3;
 
@@ -166,6 +166,7 @@ var board = new Projectile(boardWidth, boardHeight, false, true, false);
 board.vx = 0;
 board.vy = 1;
 board.x = WIDTH - boardWidth - boardBuffer;
+board.y = 500;
 
 var bowLocation = [0, 0];
 var targetLocation = [0,0];
@@ -227,12 +228,10 @@ function handleMouseClick(evt) {
 
 /** Launches arrow. */
 function fire(){
-    console.log("Fire!");
-
     arrow = new Projectile(arrowWidth, arrowHeight, true, false, true);
-    arrow.x = bowLocation[0];
-    arrow.y = bowLocation[1];
-    arrow.vx = (targetLocation[0] - bowLocation[0]) / (FPS * 1.5);
+    arrow.x = bowLocation[0] + imgBow.width / 2;
+    arrow.y = bowLocation[1] + imgBow.height / 2;
+    arrow.vx = (targetLocation[0] - bowLocation[0]) / (FPS);
     arrow.vy = (targetLocation[1] - bowLocation[1]) / (FPS);
     arrows.push(arrow);
 
@@ -296,7 +295,8 @@ function Projectile(width, height, gravity, bounce, rotate) {
 
         if (this.rotate) {
             // update rotation based on trajectory
-            this.rotation = Math.atan(this.vy / this.vx);    
+            this.rotation = Math.atan(this.vy / this.vx);
+            this.rotation += (this.vx > 0 ? 0 : -Math.atan(1)*4 );
         }
 
         // update trajectory
@@ -326,10 +326,10 @@ function Projectile(width, height, gravity, bounce, rotate) {
 
     this.doesCollide = function(target) {
         return (
-            this.x + this.width >= target.x && 
-            this.x + this.width <= target.x + target.width &&
-            this.y + this.height >= target.y &&
-            this.y + this.height <= target.y + target.height
+            this.x + this.width / 2 >= target.x && 
+            this.x + this.width / 2 <= target.x + target.width &&
+            this.y + this.height / 2 >= target.y &&
+            this.y + this.height / 2 <= target.y + target.height
         )
     }
 }  // Projectile
