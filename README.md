@@ -1,7 +1,7 @@
 # Archery
 Point-and-click archery game played in a web browser.
 
-![game screenshot]()
+![game screenshot](https://github.com/michaelhtleung/Archery/blob/master/img/aiming-cropped.png)
 
 ## Try It Out!
 [https://michaelhtleung.github.io/Archery/](https://michaelhtleung.github.io/Archery/)
